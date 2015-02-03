@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+
+{% block title %}H1Z1 Map{% endblock %}
+
+{% block main_content %}
+<div id="map">
+    <div class="location" id="location">Location</div>
+</div>
+{% endblock %}
+
+{% block sidebar_content %}
+{% if not request.session.character_name %}
+<div class="panel panel-default" id="add-player-container">
+    <div class="panel-body">
+        <form action="" method="POST">
+            <p>Add Character to Map</p>
+            <input type="text" name="name" placeholder="Character name" class="form-control" /><br/>
+            <button type="button" class="btn btn-success btn-block">Add Character</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+<div class="panel panel-default" id="update-player-container" style="display: none;">
+    <div class="panel-body">
+        <form action="" method="POST">
+            <p>Update Location</p>
+            <div class="row">
+                <div class="col-md-4">
+                    <input type="text" id="color" />
+                </div>
+                <div class="col-md-8">
+                    <input type="text" name="loc" placeholder="/loc" class="form-control" />
+                </div>
+            </div>
+            <button type="button" class="btn btn-success btn-block">Update</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<link href="{{ STATIC_URL }}vendors/map/css/leaflet.css" rel="stylesheet">
+<link href="{{ STATIC_URL }}vendors/map/css/map.css" rel="stylesheet">
+<link href="{{ STATIC_URL }}vendors/colorpicker/spectrum.css" rel="stylesheet">
+<style type="text/css">
+.leaflet-popup-content {
+    line-height: 0px;
+    margin: 12px 19px;
+}
+</style>
+{% endblock %}
+
+{% block extra_javascript %}
+<script src="{{ STATIC_URL }}vendors/map/js/leaflet.js"></script>
+<script src="{{ STATIC_URL }}vendors/map/js/Leaflet.MakiMarkers.js"></script>
+
+<script type="text/javascript" src="{{ STATIC_URL }}vendors/colorpicker/spectrum.js"></script>
+<script>
+
+    // function addUserMarker() {
+    //     // get values from form
+    //     var x = document.getElementById("xindex").value;
+    //     var z = document.getElementById("zindex").value;
+    //     // some conversion here
+    //     var lat = (x / 32) +128;
+    //     var lng = (z / 32) +128
+    //     if (typeof userMarker != 'undefined') {
+    //         map.removeLayer(userMarker);
+    //     }
+    //     userMarker = new L.marker([lat, lng], {icon: crossIcon});
+    //     map.addLayer(userMarker);
+    // }
+
+    /***  little hack starts here ***/
+    L.Map = L.Map.extend({
+        openPopup: function(popup) {
+            //        this.closePopup();  // just comment this
+            this._popup = popup;
+
+            return this.addLayer(popup).fire('popupopen', {
+                popup: this._popup
+            });
+        }
+    }); /***  end of hack ***/
+
+
+    function show_location_container(){
+        $('#update-player-container').show();
+        $("#color").spectrum({
+            color: "#f00"
+        });
+    }
+
+    function convertLatLng(x, z) {
+        var lat = (x / 32) +128;
+        var lng = (z / 32) +128;
+        return {
+            lat: lat,
+            lng: lng
+        }
+    };
+
+    function add_or_login_character() {
+        var name = $('#add-player-container input').val();
+        $.get('{% url 'api:add_or_login_player' %}', {
+                name: name
+            }).done(function(json_response) {
+                $('#add-player-container').remove();
+                characters[json_response['result']['id']] = json_response['result']
+                client_character_id = json_response['result']['id'];
+                show_location_container();
+            });
+    }
+
+    function update_character_location_and_color(id, loc_string, color) {
+        console.log('Sending String: ' + loc_string);
+        $.get('{% url 'api:update_player' %}', {
+                id: id,
+                loc_string: loc_string,
+                color: color,
+            }).done(function(json_response) {
+                console.log(json_response);
+                var character = json_response['result'];
+                update_player_marker(character['id'],
+                                     character['lat'],
+                                     character['lng'],
+                                     character['bearing'],
+                                     character['color'],
+                                     character['name']);
+            });
+    }
+
+    function update_player_marker(id, x, z, bearing, color, name) {
+        if(user_markers.hasOwnProperty(id)){
+            map.removeLayer(user_markers[id]);
+        }
+        var location = convertLatLng(x, z);
+        var mapIcon = L.MakiMarkers.icon({
+            icon: "marker-stroked",
+            color: "#"+color,
+            size: "m"
+        });
+        console.log(mapIcon);
+        var marker = L.marker([location.lat, location.lng], {
+            icon: mapIcon
+        }).bindPopup(name);
+        user_markers[id] = marker;
+        marker.addTo(map).openPopup();
+    }
+
+    function get_all_players() {
+        $.get('{% url 'api:get_all_players' %}', {})
+            .done(function(json_response) {
+                characters = json_response['result'];
+                render_all_characters();
+            });
+    }
+
+    function render_all_characters() {
+        $.each(characters, function(i) {
+            character = characters[i]
+            update_player_marker(character['id'], character['lat'], character['lng'], character['heading'], character['color'], character['name']);
+        });
+
+    }
+
+    var map;
+    var client_character_id;
+    var characters = {};
+    var user_markers = {};
+
+    var terrain = new L.tileLayer('http://h1z1bunker.com/map/mbtiles.php?imgtype=jpg&db=/var/www/h1z1bunker.com/backend/map/terrain_jpg_90.mbtiles&z={z}&x={x}&y={y}', {
+        maxZoom: 7,
+        minZoom: 2,
+        tms: true,
+        continuousWorld : true,
+        attribution: '',
+        opacity: 1
+    });
+
+    var none = new L.tileLayer('', {
+        maxZoom: 7,
+        minZoom: 2,
+        tms: true,
+        continuousWorld : true,
+        attribution: '',
+        opacity: 1
+    });
+
+    var roads = new L.tileLayer('http://h1z1bunker.com/map/mbtiles.php?imgtype=png&db=/var/www/h1z1bunker.com/backend/map/roads.mbtiles&z={z}&x={x}&y={y}', {
+        maxZoom: 7,
+        minZoom: 2,
+        tms: true,
+        continuousWorld : true,
+        attribution: '',
+        opacity: 1
+    });
+
+    var area_names = new L.tileLayer('http://h1z1bunker.com/map/mbtiles.php?imgtype=png&db=/var/www/h1z1bunker.com/backend/map/areanames.mbtiles&z={z}&x={x}&y={y}', {
+        maxZoom: 7,
+        minZoom: 2,
+        tms: true,
+        continuousWorld : true,
+        attribution: '',
+        opacity: 1
+    });
+
+    var crossIcon = L.icon({
+        iconUrl: 'http://h1z1bunker.com/_include/image/redCross.png',
+        iconSize: [50, 50],
+        iconAnchor: [26, 26],
+        popupAnchor: [-3, 0]
+
+    });
+
+    map = new L.Map("map",{
+        crs: L.CRS.Simple,
+        zoom: 2,
+        maxZoom: 7,
+        minZoom: 2,
+        center: [20, 0],
+        layers: [none, terrain, roads, area_names]
+    });
+    
+    map.panTo(new L.LatLng(128, 128));
+
+    var baseLayers = {
+        "None": none,
+        "Terrain": terrain
+    };
+    var overlays = {
+        "Roads": roads,
+        "Area Names": area_names
+    };
+
+    layersControl = new L.Control.Layers(baseLayers, overlays, {
+        collapsed: false
+    });
+
+    //L.marker([0, 0], {icon: crossIcon}).addTo(map);
+
+    map.addControl(layersControl);
+    
+    // update location
+    map.on('mousemove', function(e) {
+        var x = (e.latlng.lat - 128) * 32;
+        var z = (e.latlng.lng - 128) * 32;
+        var content = 'X = ' + x.toFixed(3) + ' Z = ' + z.toFixed(3);
+        var container = document.getElementById('location');
+        container.innerHTML = content;
+    });
+
+    
+
+    // add marker
+    function addMarker(x, z, bearing) {
+        var location = convertLatLng(x, z);
+        var marker = L.marker([location.lat, location.lng], {
+            icon: mapIcon
+        }).addTo(map);
+    }
+
+    $('#add-player-container button').on('click', function(e) {
+        e.preventDefault();
+        add_or_login_character();
+    });
+
+    $('#update-player-container button').on('click', function(e) {
+        e.preventDefault();
+        update_character_location_and_color(client_character_id,
+                                            $('#update-player-container input[name="loc"]').val(),
+                                            $('#color').spectrum("get").toHexString().replace('#', ''));
+    });
+
+    get_all_players();
+
+    {% if request.session.character_name %}
+    var character_name = "{{ request.session.character_name }}";
+    show_location_container();
+    {% else %}
+    var character_name = null;
+    {% endif %}
+    var tid = setInterval(get_all_players, 15000);
+    
+</script>
+{% endblock %}
