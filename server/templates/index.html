@@ -83,6 +83,28 @@
         }
     }); /***  end of hack ***/
 
+    L.RotatedMarker = L.Marker.extend({
+      options: { angle: 0 },
+      _setPos: function(pos) {
+        L.Marker.prototype._setPos.call(this, pos);
+        if (L.DomUtil.TRANSFORM) {
+          // use the CSS transform rule if available
+          this._icon.style[L.DomUtil.TRANSFORM] += ' rotate(' + this.options.angle + 'deg)';
+        } else if (L.Browser.ie) {
+          // fallback for IE6, IE7, IE8
+          var rad = this.options.angle * L.LatLng.DEG_TO_RAD,
+          costheta = Math.cos(rad),
+          sintheta = Math.sin(rad);
+          this._icon.style.filter += ' progid:DXImageTransform.Microsoft.Matrix(sizingMethod=\'auto expand\', M11=' +
+            costheta + ', M12=' + (-sintheta) + ', M21=' + sintheta + ', M22=' + costheta + ')';
+        }
+      }
+    });
+
+    L.rotatedMarker = function(pos, options) {
+        return new L.RotatedMarker(pos, options);
+    };
+
 
     function show_location_container(){
         $('#update-player-container').show();
@@ -124,7 +146,7 @@
                 update_player_marker(character['id'],
                                      character['lat'],
                                      character['lng'],
-                                     character['bearing'],
+                                     character['heading'],
                                      character['color'],
                                      character['name']);
             });
@@ -136,16 +158,30 @@
         }
         var location = convertLatLng(x, z);
         var mapIcon = L.MakiMarkers.icon({
-            icon: "marker-stroked",
+            icon: "pitch",
             color: "#"+color,
             size: "m"
         });
-        console.log(mapIcon);
-        var marker = L.marker([location.lat, location.lng], {
-            icon: mapIcon
+        // var marker = L.marker([location.lat, location.lng], {
+        //     icon: mapIcon,
+        //     draggable: true
+        // }).bindPopup(name);
+
+        // marker.options.angle = bearing * (180 / Math.PI);
+        console.log('Bearing: ' + bearing);
+        var marker = L.rotatedMarker(new L.LatLng(location.lat, location.lng), {
+          icon: L.icon({
+            iconUrl: '/api/icon/player/?width=20&height=20&color=' + color,
+            iconSize: [20, 20]
+          }),
+          draggable: true
         }).bindPopup(name);
+        marker.options.angle = bearing * (180 / Math.PI);
+
         user_markers[id] = marker;
-        marker.addTo(map).openPopup();
+        marker.addTo(map);
+        marker.openPopup();
+        // map.addLayer(marker);
     }
 
     function get_all_players() {
@@ -216,7 +252,7 @@
     map = new L.Map("map",{
         crs: L.CRS.Simple,
         zoom: 2,
-        maxZoom: 7,
+        maxZoom: 10,
         minZoom: 2,
         center: [20, 0],
         layers: [none, terrain, roads, area_names]
