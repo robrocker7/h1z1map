@@ -152,11 +152,41 @@
             });
     }
 
+
     function update_player_marker(id, x, z, bearing, color, name) {
-        if(user_markers.hasOwnProperty(id)){
-            map.removeLayer(user_markers[id]);
-        }
         var location = convertLatLng(x, z);
+        var destination = new L.LatLng(location.lat, location.lng);
+        var marker_moved = false
+        var marker_exists = user_markers.hasOwnProperty(id);
+        if(marker_exists){
+            var marker = user_markers[id];
+            var origin = marker.getLatLng();
+
+            if(origin.lat != destination.lat && origin.lng != destination.lng) {
+                marker_moved = true;
+                map.removeLayer(marker);
+            }
+
+            var path = new L.Polyline([origin, destination], {
+                color: 'red',
+                weight: 3,
+                opacity: 0.5,
+                smoothFactor: 1
+            });
+            path.addTo(map);
+
+            if(!marker_paths.hasOwnProperty(id)) {
+                marker_paths[id] = [];
+            }
+            marker_paths[id][marker_paths[id].length] = path;
+            $.each(marker_paths[id].slice(4), function() {
+                map.removeLayer(this);
+            });
+        }
+
+        if(!marker_moved && marker_exists) {
+            return
+        }
         var mapIcon = L.MakiMarkers.icon({
             icon: "pitch",
             color: "#"+color,
@@ -169,7 +199,7 @@
 
         // marker.options.angle = bearing * (180 / Math.PI);
         console.log('Bearing: ' + bearing);
-        var marker = L.rotatedMarker(new L.LatLng(location.lat, location.lng), {
+        var marker = L.rotatedMarker(destination, {
           icon: L.icon({
             iconUrl: '/api/icon/player/?width=20&height=20&color=' + color,
             iconSize: [20, 20]
@@ -204,6 +234,7 @@
     var client_character_id;
     var characters = {};
     var user_markers = {};
+    var marker_paths = {};
 
     var terrain = new L.tileLayer('http://h1z1bunker.com/map/mbtiles.php?imgtype=jpg&db=/var/www/h1z1bunker.com/backend/map/terrain_jpg_90.mbtiles&z={z}&x={x}&y={y}', {
         maxZoom: 7,
