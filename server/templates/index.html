@@ -105,6 +105,11 @@
         return new L.RotatedMarker(pos, options);
     };
 
+    var map;
+    var client_character_id;
+    var characters = {};
+    var user_markers = {};
+    var player_paths = {};
 
     function show_location_container(){
         $('#update-player-container').show();
@@ -153,52 +158,8 @@
     }
 
 
-    function update_player_marker(id, x, z, bearing, color, name) {
-        var location = convertLatLng(x, z);
-        var destination = new L.LatLng(location.lat, location.lng);
-        var marker_moved = false
-        var marker_exists = user_markers.hasOwnProperty(id);
-        if(marker_exists){
-            var marker = user_markers[id];
-            var origin = marker.getLatLng();
+    function add_marker_to_map(color, destination, name, bearing) {
 
-            if(origin.lat != destination.lat && origin.lng != destination.lng) {
-                marker_moved = true;
-                map.removeLayer(marker);
-            }
-
-            var path = new L.Polyline([origin, destination], {
-                color: 'red',
-                weight: 3,
-                opacity: 0.5,
-                smoothFactor: 1
-            });
-            path.addTo(map);
-
-            if(!marker_paths.hasOwnProperty(id)) {
-                marker_paths[id] = [];
-            }
-            marker_paths[id][marker_paths[id].length] = path;
-            $.each(marker_paths[id].slice(4), function() {
-                map.removeLayer(this);
-            });
-        }
-
-        if(!marker_moved && marker_exists) {
-            return
-        }
-        var mapIcon = L.MakiMarkers.icon({
-            icon: "pitch",
-            color: "#"+color,
-            size: "m"
-        });
-        // var marker = L.marker([location.lat, location.lng], {
-        //     icon: mapIcon,
-        //     draggable: true
-        // }).bindPopup(name);
-
-        // marker.options.angle = bearing * (180 / Math.PI);
-        console.log('Bearing: ' + bearing);
         var marker = L.rotatedMarker(destination, {
           icon: L.icon({
             iconUrl: '/api/icon/player/?width=20&height=20&color=' + color,
@@ -207,11 +168,61 @@
           draggable: true
         }).bindPopup(name);
         marker.options.angle = bearing * (180 / Math.PI);
+        return marker;
+    }
 
-        user_markers[id] = marker;
-        marker.addTo(map);
-        marker.openPopup();
-        // map.addLayer(marker);
+    function add_path_to_map(origin, destination, color) {
+        var path = new L.Polyline([origin, destination], {
+            color: '#' + color,
+            weight: 3,
+            opacity: 0.5,
+            smoothFactor: 1
+        });
+        path.addTo(map);
+
+        return path;
+    }
+
+    function add_path_to_player(id, path) {
+        var paths = [];
+        if(player_paths.hasOwnProperty(id)) {
+            paths = player_paths[id];
+        } 
+
+        paths.unshift(path);
+        var paths_to_delete = paths.slice(4);
+        for(i = 0; i < paths_to_delete.length; i++) {
+            var path = paths_to_delete[i];
+            map.removeLayer(path);
+        }
+        player_paths[id] = paths.slice(0, 4);
+    }
+
+
+    function update_player_marker(id, x, z, bearing, color, name) {
+        var location = convertLatLng(x, z);
+        var destination = new L.LatLng(location.lat, location.lng);
+        var marker_exists = user_markers.hasOwnProperty(id);
+
+        if(!marker_exists) {
+            var marker = add_marker_to_map(color, destination, name, bearing);
+            marker.addTo(map);
+            marker.openPopup();
+            user_markers[id] = marker;
+            return
+        }
+        var marker = user_markers[id];
+        var origin = marker.getLatLng();
+        if(origin.lat != destination.lat || origin.lng != destination.lng) {
+            map.removeLayer(marker);
+            var marker = add_marker_to_map(color, destination, name, bearing);
+            marker.addTo(map);
+            marker.openPopup();
+            user_markers[id] = marker;
+
+            var path = add_path_to_map(origin, destination, color);
+            add_path_to_player(id, path);
+        }
     }
 
     function get_all_players() {
@@ -229,12 +240,6 @@
         });
 
     }
-
-    var map;
-    var client_character_id;
-    var characters = {};
-    var user_markers = {};
-    var marker_paths = {};
 
     var terrain = new L.tileLayer('http://h1z1bunker.com/map/mbtiles.php?imgtype=jpg&db=/var/www/h1z1bunker.com/backend/map/terrain_jpg_90.mbtiles&z={z}&x={x}&y={y}', {
         maxZoom: 7,
@@ -317,16 +322,6 @@
         container.innerHTML = content;
     });
 
-    
-
-    // add marker
-    function addMarker(x, z, bearing) {
-        var location = convertLatLng(x, z);
-        var marker = L.marker([location.lat, location.lng], {
-            icon: mapIcon
-        }).addTo(map);
-    }
-
     $('#add-player-container button').on('click', function(e) {
         e.preventDefault();
         add_or_login_character();
@@ -347,7 +342,7 @@
     {% else %}
     var character_name = null;
     {% endif %}
-    var tid = setInterval(get_all_players, 15000);
+    // var tid = setInterval(get_all_players, 15000);
     
 </script>
 {% endblock %}
