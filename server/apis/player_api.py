@@ -9,6 +9,11 @@ from server.lib.utils import parse_loc_string
 @api_wrapper()
 def add_or_login_player(request, *args, **kwargs):
     name = request.GET.get('name', None)
+
+    lat, lng, heading = parse_loc_string(name)
+    if lat is not None or lng is not None or heading is not None:
+        raise InvalidParameterError('Name should not evaluate as a location.')
+
     player, created = Player.objects.get_or_create(character_name=name)
     player.login_session(request)
     return player.get_bound_data()
@@ -39,6 +44,7 @@ def update_player(request, *args, **kwargs):
 
     loc_string = request.GET.get('loc_string')
     color = request.GET.get('color', None)
+    death = True if request.GET.get('death', 'false') == 'true' else False
 
     if uid is None:
         raise InvalidParameterError('GET param `id` is required')
@@ -59,10 +65,12 @@ def update_player(request, *args, **kwargs):
     logging.info('String: {0}'.format(loc_string))
     logging.info('Results: {0}, {1}, {2}'.format(lat, lng, heading))
 
-    player.lat = lat
-    player.lng = lng
+
     player.color = color
-    player.heading = heading
+    if death:
+        player.death()
+
+    player.add_move(lat, lng, heading)
     player.save()
 
     return player.get_bound_data()

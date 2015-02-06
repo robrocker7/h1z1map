@@ -3,38 +3,40 @@
 {% block title %}H1Z1 Map{% endblock %}
 
 {% block main_content %}
-<div id="map">
-    <div class="location" id="location">Location</div>
-</div>
-{% endblock %}
 
-{% block sidebar_content %}
-{% if not request.session.character_name %}
-<div class="panel panel-default" id="add-player-container">
-    <div class="panel-body">
-        <form action="" method="POST">
-            <p>Add Character to Map</p>
-            <input type="text" name="name" placeholder="Character name" class="form-control" /><br/>
-            <button type="button" class="btn btn-success btn-block">Add Character</button>
-        </form>
-    </div>
-</div>
-{% endif %}
-<div class="panel panel-default" id="update-player-container" style="display: none;">
-    <div class="panel-body">
-        <form action="" method="POST">
-            <p>Update Location</p>
-            <div class="row">
-                <div class="col-md-4">
-                    <input type="text" id="color" />
-                </div>
-                <div class="col-md-8">
-                    <input type="text" name="loc" placeholder="/loc" class="form-control" />
-                </div>
+<div id="map-container">
+    <div class="map_overlay">
+        {% if not request.session.character_name %}
+        <div class="panel panel-default" id="add-player-container">
+            <div class="panel-body">
+                <form action="" method="POST">
+                    <p>Add Your Character</p>
+                    <input type="text" name="name" placeholder="Character name" class="form-control" /><br/>
+                    <button type="button" class="btn btn-success btn-block">Add Character</button>
+                </form>
             </div>
-            <button type="button" class="btn btn-success btn-block">Update</button>
-        </form>
+        </div>
+        {% endif %}
+        <div class="panel panel-default" id="update-player-container" style="display: none;">
+            <div class="panel-body">
+                <form action="" method="POST">
+                    <div class="input-group">
+                        <span class="input-group-addon" data-toggle="tooltip" data-placement="bottom" title="Click if you died." id="death-check" data-death="false">
+                            <span class="glyphicon glyphicon-heart" style="color: red;"></span>
+                        </span>
+                        <input type="text" name="loc" placeholder="/loc" class="form-control" id="location-input" />
+                        <span class="input-group-addon"><input type="text" id="color" /></span>
+                    </div>
+                    <button type="button" class="btn btn-success btn-block">Update</button>
+                </form>
+            </div>
+        </div>
     </div>
+
+    <div id="map">
+        <div class="location" id="location">Location</div>
+    </div>
+
 </div>
 {% endblock %}
 
@@ -114,7 +116,8 @@
     function show_location_container(){
         $('#update-player-container').show();
         $("#color").spectrum({
-            color: "#" + characters[client_character_id]['color']
+            color: "#" + characters[client_character_id]['color'],
+            chooseText: ''
         });
     }
 
@@ -132,28 +135,41 @@
         $.get('{% url 'api:add_or_login_player' %}', {
                 name: name
             }).done(function(json_response) {
-                $('#add-player-container').remove();
-                characters[json_response['result']['id']] = json_response['result']
-                client_character_id = json_response['result']['id'];
-                show_location_container();
+                if(!json_response['success']) {
+
+                } else{
+                    $('#add-player-container').remove();
+                    characters[json_response['result']['id']] = json_response['result']
+                    client_character_id = json_response['result']['id'];
+                    show_location_container();
+                }
             });
     }
 
-    function update_character_location_and_color(id, loc_string, color) {
+    function update_character_location_and_color(id, loc_string, color, death) {
         console.log('Sending String: ' + loc_string);
         $.get('{% url 'api:update_player' %}', {
                 id: id,
                 loc_string: loc_string,
                 color: color,
+                death: death
             }).done(function(json_response) {
                 console.log(json_response);
+
                 var character = json_response['result'];
+                var latest_move = character['current_life_moves'][0];
+
+                if(death == 'true') {
+                    kill_character(character['id']);
+                    $('#death-check').trigger('click');
+                }
+
                 update_player_marker(character['id'],
-                                     character['lat'],
-                                     character['lng'],
-                                     character['heading'],
-                                     character['color'],
-                                     character['name']);
+                                 latest_move['lat'],
+                                 latest_move['lng'],
+                                 latest_move['heading'],
+                                 character['color'],
+                                 character['name']);
             });
     }
 
@@ -190,12 +206,7 @@
         } 
 
         paths.unshift(path);
-        var paths_to_delete = paths.slice(4);
-        for(i = 0; i < paths_to_delete.length; i++) {
-            var path = paths_to_delete[i];
-            map.removeLayer(path);
-        }
-        player_paths[id] = paths.slice(0, 4);
+        player_paths[id] = paths;
     }
 
 
@@ -205,6 +216,7 @@
         var marker_exists = user_markers.hasOwnProperty(id);
 
         if(!marker_exists) {
+            console.log('marker does not exist')
             var marker = add_marker_to_map(color, destination, name, bearing);
             marker.addTo(map);
             marker.openPopup();
@@ -214,6 +226,7 @@
         var marker = user_markers[id];
         var origin = marker.getLatLng();
         if(origin.lat != destination.lat || origin.lng != destination.lng) {
+             console.log('marker moved')
             map.removeLayer(marker);
             var marker = add_marker_to_map(color, destination, name, bearing);
             marker.addTo(map);
@@ -223,6 +236,22 @@
             var path = add_path_to_map(origin, destination, color);
             add_path_to_player(id, path);
         }
+         console.log('marker does not move')
+    }
+
+    function add_paths_to_map(id, paths, color) {
+        $.each(paths, function(i) {
+            var path_obj = paths[i];
+
+            var origin_location = convertLatLng(path_obj['start']['lat'], path_obj['start']['lng']);
+            var origin = new L.LatLng(origin_location.lat, origin_location.lng);
+            
+            var destination_location = convertLatLng(path_obj['end']['lat'], path_obj['end']['lng']);
+            var destination = new L.LatLng(destination_location.lat, destination_location.lng);
+
+            var path = add_path_to_map(origin, destination, color);
+            add_path_to_player(id, path);
+        });
     }
 
     function get_all_players() {
@@ -235,10 +264,31 @@
 
     function render_all_characters() {
         $.each(characters, function(i) {
-            character = characters[i]
-            update_player_marker(character['id'], character['lat'], character['lng'], character['heading'], character['color'], character['name']);
+            character = characters[i];
+            var latest_move = character['current_life_moves'][0];
+            update_player_marker(character['id'],
+                                 latest_move['lat'],
+                                 latest_move['lng'],
+                                 latest_move['heading'],
+                                 character['color'],
+                                 character['name']);
+
+            add_paths_to_map(character['id'], character['paths'], character['color']);
         });
 
+    }
+
+    function kill_character(id) {
+        var paths = player_paths[id];
+        console.log(paths);
+        $.each(paths, function(i) {
+            var path = paths[i];
+            map.removeLayer(path);
+        });
+        player_paths[id] = [];
+        var marker = user_markers[id];
+        map.removeLayer(marker);
+        delete user_markers[id];
     }
 
     var terrain = new L.tileLayer('http://h1z1bunker.com/map/mbtiles.php?imgtype=jpg&db=/var/www/h1z1bunker.com/backend/map/terrain_jpg_90.mbtiles&z={z}&x={x}&y={y}', {
@@ -331,7 +381,36 @@
         e.preventDefault();
         update_character_location_and_color(client_character_id,
                                             $('#update-player-container input[name="loc"]').val(),
-                                            $('#color').spectrum("get").toHexString().replace('#', ''));
+                                            $('#color').spectrum("get").toHexString().replace('#', ''),
+                                            $('#death-check').attr('data-death'));
+    });
+
+    $('#map-container').on('click', '#death-check', 
+        function(e) {
+            if($(this).attr('data-death') == 'true') {
+                $(this).find('.glyphicon')
+                    .addClass('glyphicon-heart')
+                    .removeClass('glyphicon-heart-empty')
+                    .css('color', 'red');
+
+                $(this).attr('data-death', 'false');
+            } else {
+                $(this).find('.glyphicon')
+                    .addClass('glyphicon-heart-empty')
+                    .removeClass('glyphicon-heart')
+                    .css('color', 'gray');
+                
+                $(this).attr('data-death', 'true');
+            }
+            
+        });
+
+    $('#death-check').hover(function() {
+        $('#death-check').tooltip('show');
+    });
+
+    $('#location-input').on('focus', function() {
+        $(this).val('');
     });
 
     get_all_players();
