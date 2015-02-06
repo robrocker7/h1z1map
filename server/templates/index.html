@@ -421,7 +421,13 @@
     {% else %}
     var character_name = null;
     {% endif %}
-    // var tid = setInterval(get_all_players, 15000);
+    var base_location = convertLatLng(880.000, -1712.000);
+    var base_location_latlng = new L.LatLng(base_location.lat, base_location.lng);
+    var baseIcon = L.MakiMarkers.icon({icon: "embassy", color: "#CCC", size: "m"});
+    var marker = L.rotatedMarker(base_location_latlng, {
+          icon: baseIcon,
+        }).bindPopup('Base').addTo(map);
+    var tid = setInterval(get_all_players, 15000);
     
 </script>
 {% endblock %}
