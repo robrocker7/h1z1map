@@ -65,7 +65,6 @@ def update_player(request, *args, **kwargs):
     logging.info('String: {0}'.format(loc_string))
     logging.info('Results: {0}, {1}, {2}'.format(lat, lng, heading))
 
-
     player.color = color
     if death:
         player.death()

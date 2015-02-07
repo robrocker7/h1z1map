@@ -30,8 +30,8 @@ def player_icon(request):
     width = int(width)
     aspect = float(width) / float(height)
 
-    data = np.array(original)   # "data" is a height x width x 4 numpy array
-    red, green, blue, alpha = data.T # Temporarily unpack the bands for readability
+    data = np.array(original)  # "data" is a height x width x 4 numpy array
+    red, green, blue, alpha = data.T  # Temporarily unpack the bands for readability
 
     # Replace white with red... (leaves alpha values alone...)
     black_areas = (red == 0) & (blue == 0) & (green == 0)
