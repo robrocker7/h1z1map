@@ -221,7 +221,7 @@
             marker.addTo(map);
             marker.openPopup();
             user_markers[id] = marker;
-            return
+            return null
         }
         var marker = user_markers[id];
         var origin = marker.getLatLng();
@@ -236,7 +236,7 @@
             var path = add_path_to_map(origin, destination, color);
             add_path_to_player(id, path);
         }
-         console.log('marker does not move')
+        return marker
     }
 
     function add_paths_to_map(id, paths, color) {
@@ -266,14 +266,16 @@
         $.each(characters, function(i) {
             character = characters[i];
             var latest_move = character['current_life_moves'][0];
-            update_player_marker(character['id'],
+            var marker = update_player_marker(character['id'],
                                  latest_move['lat'],
                                  latest_move['lng'],
                                  latest_move['heading'],
                                  character['color'],
                                  character['name']);
-
-            add_paths_to_map(character['id'], character['paths'], character['color']);
+            if(marker == null) {
+                add_paths_to_map(character['id'], character['paths'], character['color']);
+            }
+            
         });
 
     }
