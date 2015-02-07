@@ -13,6 +13,7 @@ class Place(models.Model):
         INDUSTRY = 2
         CAR = 3
         STASH = 4
+        COMMERICAL = 5
 
 
     lat = models.FloatField()
@@ -29,7 +30,7 @@ class Place(models.Model):
             'lat': self.lat,
             'lng': self.lng,
             'name': self.name,
-            'maki-icon': self.icon_string,
+            'maki_icon': self.icon_string,
             'color': self.color,
             'category': self.category
         }

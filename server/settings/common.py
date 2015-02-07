@@ -23,6 +23,7 @@ INSTALLED_APPS = (
 
     'server.common',
     'server.players',
+    'server.places',
 )
 
 MIDDLEWARE_CLASSES = (

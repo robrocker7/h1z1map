@@ -89,4 +89,3 @@ def update_place(request, *args, **kwargs):
     place.save()
 
     return place.get_bound_data()
-

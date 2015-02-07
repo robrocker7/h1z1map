@@ -6,8 +6,7 @@
 
 <div id="map-container">
     <div class="map_overlay">
-        {% if not request.session.character_name %}
-        <div class="panel panel-default" id="add-player-container">
+        <div class="panel panel-default" id="add-player-container" style="display: none;">
             <div class="panel-body">
                 <form action="" method="POST">
                     <p>Add Your Character</p>
@@ -16,7 +15,6 @@
                 </form>
             </div>
         </div>
-        {% endif %}
         <div class="panel panel-default" id="update-player-container" style="display: none;">
             <div class="panel-body">
                 <form action="" method="POST">
@@ -29,6 +27,11 @@
                     </div>
                     <button type="button" class="btn btn-success btn-block">Update</button>
                 </form>
+            </div>
+        </div>
+        <div class="panel panel-default" id="add-place-container" style="display: none;">
+            <div class="panel-body">
+                asdf
             </div>
         </div>
     </div>
@@ -55,8 +58,9 @@
 {% block extra_javascript %}
 <script src="{{ STATIC_URL }}vendors/map/js/leaflet.js"></script>
 <script src="{{ STATIC_URL }}vendors/map/js/Leaflet.MakiMarkers.js"></script>
-
 <script type="text/javascript" src="{{ STATIC_URL }}vendors/colorpicker/spectrum.js"></script>
+
+<script src="{{ STATIC_URL }}js/services.js"></script>
 <script>
 
     // function addUserMarker() {
@@ -423,13 +427,16 @@
     {% else %}
     var character_name = null;
     {% endif %}
-    var base_location = convertLatLng(880.000, -1712.000);
-    var base_location_latlng = new L.LatLng(base_location.lat, base_location.lng);
-    var baseIcon = L.MakiMarkers.icon({icon: "embassy", color: "#CCC", size: "m"});
-    var marker = L.rotatedMarker(base_location_latlng, {
-          icon: baseIcon,
-        }).bindPopup('Base').addTo(map);
-    var tid = setInterval(get_all_players, 15000);
+    var places_api = new Places(map);
+    var dialog_api = new Dialog();
+
+    // var base_location = convertLatLng(880.000, -1712.000);
+    // var base_location_latlng = new L.LatLng(base_location.lat, base_location.lng);
+    // var baseIcon = L.MakiMarkers.icon({icon: "embassy", color: "#CCC", size: "m"});
+    // var marker = L.rotatedMarker(base_location_latlng, {
+    //       icon: baseIcon,
+    //     }).bindPopup('Base').addTo(map);
+    // var tid = setInterval(get_all_players, 15000);
     
 </script>
 {% endblock %}
