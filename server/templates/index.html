@@ -79,7 +79,7 @@
 <script src="{{ STATIC_URL }}vendors/map/js/Leaflet.MakiMarkers.js"></script>
 <script type="text/javascript" src="{{ STATIC_URL }}vendors/colorpicker/spectrum.js"></script>
 
-<script src="{{ STATIC_URL }}js/services.js"></script>
+<script src="{{ STATIC_URL }}js/services.js?version=1"></script>
 <script>
 
     // function addUserMarker() {
@@ -200,8 +200,8 @@
 
         var marker = L.rotatedMarker(destination, {
           icon: L.icon({
-            iconUrl: '/api/icon/player/?width=20&height=20&color=' + color,
-            iconSize: [20, 20]
+            iconUrl: '/api/icon/player/?width=24&height=24&color=' + color + '&version=1',
+            iconSize: [24, 24]
           }),
           draggable: true
         }).bindPopup(name);
