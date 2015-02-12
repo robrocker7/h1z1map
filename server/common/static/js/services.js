@@ -83,10 +83,14 @@ var Places = function(map) {
         var latlng = new L.LatLng(location.lat, location.lng);
         var marker = L.rotatedMarker(latlng, {
                 icon: placeIcon,
-            }).bindPopup('Base').addTo(self.MAP);
+            }).bindPopup(place['name']).addTo(self.MAP);
 
         self.PLACE_MARKERS[place['id']] = marker;
     };
+
+    self.clear_place_form = function() {
+        $('#add-place-container input[name="loc"], #add-place-container input[name="name"]').val('');
+    }
 
     self.add_place = function(loc_string, color, name) {
         $.get('/api/place/add/', {
@@ -97,6 +101,7 @@ var Places = function(map) {
                 var place = json_response['result'];
                 self.PLACES[place['id']] = place;
                 self.add_place_to_map(place);
+                self.clear_place_form();
             });
     };
 
@@ -153,8 +158,7 @@ var Places = function(map) {
         self.bind_events();
         self.POLL = setInterval(self.get_all_places, 10000);
         $("#place-color").spectrum({
-            color: "#CCCCCC",
-            chooseText: ''
+            color: "#CCCCCC"
         });
     };
     self.init(map);
