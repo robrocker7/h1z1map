@@ -8,15 +8,38 @@ var Dialog = function() {
     }
 
     self.show_dialog = function(dialog_id) {
-        $('.map_overlay > div').hide();
-        $('#'+dialog_id).show();
+        $('.map_overlay #player-action-container form').hide();
+        if(dialog_id == self.DIALOGS.ADD_CHARACTER) {
+            $('#player-action-container').hide();
+            $('#add-player-container').show();
+        } else {
+            $('#player-action-container').show();
+            $('#add-player-container').hide();
+            $('#'+dialog_id).show();
+            self.change_tab_action_state(dialog_id);
+        }
+    }
+
+    self.change_tab_action_state = function(tab_id) {
+        $('#player-action-container .list-group-item').removeClass('active');
+        $('#player-action-container .list-group-item[data-tab="'+tab_id+'"]').addClass('active');
+    }
+
+    self.bind_events = function() {
+        $('#player-action-container .list-group-item').on('click', function(e) {
+            e.preventDefault();
+            self.show_dialog($(this).attr('data-tab'));
+        });
     }
 
     self.init = function() {
+        self.bind_events();
         self.show_dialog(self.DIALOGS.ADD_CHARACTER);
     }
     self.init();
 }
+
+var dialog_api = new Dialog();
 
 var Places = function(map) {
     var self = this;
@@ -24,6 +47,7 @@ var Places = function(map) {
     self.MAP = null;
     self.PLACE_MARKERS = {};
     self.PLACES = {};
+    self.POLL = null;
 
     self.add_place_to_map = function(place) {
 
@@ -64,14 +88,11 @@ var Places = function(map) {
         self.PLACE_MARKERS[place['id']] = marker;
     };
 
-    self.add_place = function(lat, lng, name, icon_string, color, category) {
+    self.add_place = function(loc_string, color, name) {
         $.get('/api/place/add/', {
-                lat: lat,
-                lng: lng,
-                name: name,
-                icon_string: icon_string,
+                loc_string: loc_string,
                 color: color,
-                category: category
+                name: name
             }).done(function(json_response) {
                 var place = json_response['result'];
                 self.PLACES[place['id']] = place;
@@ -95,20 +116,45 @@ var Places = function(map) {
             });
     };
 
-    self.get_all_places = function(callback) {
+    self.get_all_places = function() {
         $.get('/api/place/all/', {})
             .done(function(json_response) {
-                self.PLACES = json_response['result'];
-                callback();
+                var places = json_response['result'];
+                $.each(places, function(i) {
+                    var place = places[i];
+                    if(!self.PLACES.hasOwnProperty(place['id'])) {
+                        self.add_place_to_map(place);
+                    } else {
+                        var old_place = self.PLACES[place['id']];
+                        if(place.lat != old_place.lat || place.lng != old_place.lat) {
+                            var marker = self.PLACE_MARKERS[place['id']];
+                            self.MAP.removeLayer(marker);
+                            self.add_place_to_map(place);
+                        }
+                    }
+                    self.PLACES[place['id']] = place;
+                    
+                });
             });
     };
 
+    self.bind_events = function() {
+        $('#add-place-container button').on('click', function(e) {
+            e.preventDefault();
+            self.add_place($('#add-place-container input[name="loc"]').val(),
+                           $('#place-color').spectrum("get").toHexString().replace('#', ''),
+                           $('#add-place-container input[name="name"]').val());
+        });
+    }
+
     self.init = function(map) {
         self.MAP = map;
-        self.get_all_places(function() {
-            $.each(self.PLACES, function(i) {
-                self.add_place_to_map(self.PLACES[i]);
-            })
+        self.get_all_places();
+        self.bind_events();
+        self.POLL = setInterval(self.get_all_places, 10000);
+        $("#place-color").spectrum({
+            color: "#CCCCCC",
+            chooseText: ''
         });
     };
     self.init(map);

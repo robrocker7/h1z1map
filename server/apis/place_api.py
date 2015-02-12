@@ -2,6 +2,7 @@ import logging
 
 from server.common.service import api_wrapper, InvalidParameterError
 from server.places.models import Place
+from server.lib.utils import parse_loc_string
 
 
 @api_wrapper()
@@ -15,16 +16,23 @@ def verify_place_request(request, update=False):
     """Verify place object from request."""
     lat = request.GET.get('lat', None)
     lng = request.GET.get('lng', None)
+    loc_string = request.GET.get('loc_string', None)
     name = request.GET.get('name', None)
-    icon_string = request.GET.get('maki_icon', None)
+    icon_string = request.GET.get('maki_icon', 'embassasy')
     color = request.GET.get('color', None)
     category = request.GET.get('category', 0)
 
-    if lat is None:
-        raise InvalidParameterError('GET `lat` required')
+    if loc_string is not None:
+        lat, lng, heading = parse_loc_string(loc_string)
+        if lat is None or lng is None or heading is None:
+            raise InvalidParameterError('`loc_string` parse failed')
+    else:
 
-    if lng is None:
-        raise InvalidParameterError('GET `lng` required')
+        if lat is None:
+            raise InvalidParameterError('GET `lat` required')
+
+        if lng is None:
+            raise InvalidParameterError('GET `lng` required')
 
     if name is None:
         raise InvalidParameterError('GET `name` required')

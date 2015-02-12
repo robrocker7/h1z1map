@@ -6,7 +6,7 @@
 
 <div id="map-container">
     <div class="map_overlay">
-        {% if not request.session.character_name %}
+
         <div class="panel panel-default" id="add-player-container">
             <div class="panel-body">
                 <form action="" method="POST">
@@ -16,19 +16,41 @@
                 </form>
             </div>
         </div>
-        {% endif %}
-        <div class="panel panel-default" id="update-player-container" style="display: none;">
+        <div class="panel panel-default" id="player-action-container" style="display: none;">
             <div class="panel-body">
-                <form action="" method="POST">
-                    <div class="input-group">
-                        <span class="input-group-addon" data-toggle="tooltip" data-placement="bottom" title="Click if you died." id="death-check" data-death="false">
-                            <span class="glyphicon glyphicon-heart" style="color: red;"></span>
-                        </span>
-                        <input type="text" name="loc" placeholder="/loc" class="form-control" id="location-input" />
-                        <span class="input-group-addon"><input type="text" id="color" /></span>
+                <div class="row">
+                    <div class="col-md-1">
+                        <div class="list-group">
+                            <a class="list-group-item" data-tab="update-player-container">
+                                <span class="glyphicon glyphicon-user"></span>
+                            </a>
+                            <a class="list-group-item" data-tab="add-place-container">
+                                <span class="glyphicon glyphicon-map-marker"></span>
+                            </a>
+                        </div>
                     </div>
-                    <button type="button" class="btn btn-success btn-block">Update</button>
-                </form>
+                    <div class="col-md-11">
+                        <form action="" method="POST" id="update-player-container">
+                            <div class="input-group">
+                                <span class="input-group-addon" data-toggle="tooltip" data-placement="bottom" title="Click if you died." id="death-check" data-death="false">
+                                    <span class="glyphicon glyphicon-heart" style="color: red;"></span>
+                                </span>
+                                <input type="text" name="loc" placeholder="/loc" class="form-control" id="location-input" />
+                                <span class="input-group-addon"><input type="text" id="color" /></span>
+                            </div>
+                            <button type="button" class="btn btn-success btn-block">Update</button>
+                       </form>
+                        <form action="" method="POST" id="add-place-container" style="display: none;">
+                            <input type="text" name="name" placeholder="Place Name" class="form-control" />
+                            <div class="input-group">
+                                <input type="text" name="loc" placeholder="/loc" class="form-control" />
+                                <span class="input-group-addon"><input type="text" id="place-color" /></span>
+                            </div>
+                            <button type="button" class="btn btn-success btn-block">Add Place</button>
+                        </form>
+                    </div>
+                </div>
+                
             </div>
         </div>
     </div>
@@ -115,7 +137,7 @@
     var player_paths = {};
 
     function show_location_container(){
-        $('#update-player-container').show();
+        dialog_api.show_dialog(dialog_api.DIALOGS.UPDATE_LOCATION);
         $("#color").spectrum({
             color: "#" + characters[client_character_id]['color'],
             chooseText: ''

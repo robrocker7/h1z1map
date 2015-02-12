@@ -73,3 +73,17 @@ def update_player(request, *args, **kwargs):
     player.save()
 
     return player.get_bound_data()
+
+
+@api_wrapper()
+def receive_screenshot(request, character_name, *args, **kwargs):
+    image_data = request.FILES.get('screenshot', None)
+    if image_data is None:
+        raise InvalidParameterError('FILES param `screenshot` is required')
+
+    try:
+        character = Player.objects.get(character_name=character_name)
+    except Player.DoesNotExist:
+        raise InvalidParameterError('Player with name {0} DoesNotExist'.format(character_name))
+
+    logging.info(image_data)
