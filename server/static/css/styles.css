@@ -8,7 +8,7 @@ body {
     left: 0;
     z-index: -1;
     width: 100%;
-    height: 100%;
+    height: 680px !important;
 }
 
 .map_overlay {
@@ -40,7 +40,7 @@ body {
     width: 300px;
     margin-left: 100px;
 }
-#update-player-container .input-group {
+#update-player-container .input-group, #add-place-container .input-group, #add-place-container input[name="name"] {
     margin-bottom: 10px;
 }
 .sp-replacer {
@@ -49,4 +49,18 @@ body {
 }
 #death-check {
     cursor: pointer;
+}
+
+#player-action-container .glyphicon {
+    font-size: 12px;
+}
+#player-action-container .list-group {
+    margin-bottom: 0px;
+}
+#player-action-container .list-group-item {
+    padding-left: 11px;
+    padding-right: 0px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    width: 36px;
 }
